@@ -3,16 +3,14 @@
 import sys
 import time
 import urllib
-import urllib2
-import requests
+#import urllib2
+#import requests
 import numpy as np
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
 
-reload(sys)
-sys.setdefaultencoding('utf8')
-
-
+#reload(sys)
+#sys.setdefaultencoding('utf8')
 
 #Some User Agents
 hds=[{'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'},\
@@ -24,24 +22,25 @@ def book_spider(book_tag):
     page_num=0;
     book_list=[]
     try_times=0
-    
-    while(1):
+    while(page_num == 0):
         #url='http://www.douban.com/tag/%E5%B0%8F%E8%AF%B4/book?start=0' # For Test
-        url='http://www.douban.com/tag/'+urllib.quote(book_tag)+'/book?start='+str(page_num*15)
+        url='http://www.douban.com/tag/'+urllib.parse.quote(book_tag)+'/book?start='+str(page_num*15)
         time.sleep(np.random.rand()*5)
         
         #Last Version
         try:
-            req = urllib2.Request(url, headers=hds[page_num%len(hds)])
-            source_code = urllib2.urlopen(req).read()
-            plain_text=str(source_code)   
-        except (urllib2.HTTPError, urllib2.URLError), e:
-            print e
+            req = urllib.request.Request(url, headers=hds[page_num%len(hds)])
+            source_code = urllib.request.urlopen(req).read()
+            plain_text1 = source_code.decode('utf-8')
+            plain_text=str(plain_text1)   
+            
+            file_object = open("plain_text11.txt",'w+',encoding='utf-8')
+            file_object.write(plain_text)
+            file_object.close()
+                    
+        except ((urllib.request.HTTPError, urllib.request.URLError), e):
+            print (e)
             continue
-  
-        ##Previous Version, IP is easy to be Forbidden
-        #source_code = requests.get(url) 
-        #plain_text = source_code.text  
         
         soup = BeautifulSoup(plain_text)
         list_soup = soup.find('div', {'class': 'mod book-list'})
@@ -75,23 +74,23 @@ def book_spider(book_tag):
                 people_num = get_people_num(book_url)
                 people_num = people_num.strip('人评价')
             except:
-                people_num ='0'
-            
+                people_num ='0'        
+            print ([title,rating,people_num,author_info,pub_info])
             book_list.append([title,rating,people_num,author_info,pub_info])
             try_times=0 #set 0 when got valid information
         page_num+=1
-        print 'Downloading Information From Page %d' % page_num
+        print ('Downloading Information From Page %d' % page_num)
     return book_list
 
 
 def get_people_num(url):
     #url='http://book.douban.com/subject/6082808/?from=tag_all' # For Test
     try:
-        req = urllib2.Request(url, headers=hds[np.random.randint(0,len(hds))])
-        source_code = urllib2.urlopen(req).read()
+        req = urllib.request.Request(url, headers=hds[np.random.randint(0,len(hds))])
+        source_code = urllib.request.urlopen(req).read()
         plain_text=str(source_code)   
-    except (urllib2.HTTPError, urllib2.URLError), e:
-        print e
+    except ((urllib.request.HTTPError, urllib.request.URLError), e):
+        print (e)
     soup = BeautifulSoup(plain_text)
     people_num=soup.find('div',{'class':'rating_sum'}).findAll('span')[1].string.strip()
     return people_num
@@ -107,19 +106,22 @@ def do_spider(book_tag_lists):
 
 
 def print_book_lists_excel(book_lists,book_tag_lists):
-    wb=Workbook(optimized_write=True)
+    wb=Workbook()
     ws=[]
     for i in range(len(book_tag_lists)):
-        ws.append(wb.create_sheet(title=book_tag_lists[i].decode())) #utf8->unicode
+        ws.append(wb.create_sheet(title=book_tag_lists[i])) #utf8->unicode
     for i in range(len(book_tag_lists)): 
-        ws[i].append(['序号','书名','评分','评价人数','作者','出版社'])
-        count=1
+        #ws[i].append(['序号','书名','评分','评价人数','作者','出版社'])
+        #count=1
+        #for bl in book_lists[i]:
+            #ws[i].append([count,bl[0],float(bl[1]),int(bl[2]),bl[3],bl[4]])
+            #count+=1
+        ws[i].append(['书名','评分','评价人数','作者','出版社'])
         for bl in book_lists[i]:
-            ws[i].append([count,bl[0],float(bl[1]),int(bl[2]),bl[3],bl[4]])
-            count+=1
+            ws[i].append(bl)
     save_path='book_list'
     for i in range(len(book_tag_lists)):
-        save_path+=('-'+book_tag_lists[i].decode())
+        save_path+=('-'+book_tag_lists[i])
     save_path+='.xlsx'
     wb.save(save_path)
 
@@ -137,7 +139,7 @@ if __name__=='__main__':
     #book_tag_lists = ['名著']
     #book_tag_lists = ['科普','经典','生活','心灵','文学']
     #book_tag_lists = ['科幻','思维','金融']
-    book_tag_lists = ['个人管理','时间管理','投资','文化','宗教']
+    book_tag_lists = ['个人管理']#,'时间管理','投资','文化','宗教']
     book_lists=do_spider(book_tag_lists)
     print_book_lists_excel(book_lists,book_tag_lists)
     
